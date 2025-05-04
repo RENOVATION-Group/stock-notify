@@ -42,7 +42,6 @@ us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 today = datetime.date.today()
 failed_stocks = []
 
-# 🔧 修正済み：KeyError防止のため iloc[-2] を使用
 def fetch_price(ticker):
     data = yf.download(ticker, period="2d", interval="1d", progress=False)
 
@@ -50,7 +49,8 @@ def fetch_price(ticker):
         return None
 
     try:
-        prev_close = data["Close"].iloc[-2]  # ✅ 修正済みポイント
+        # 修正済み：KeyError: -2 を防ぐために iloc を使用
+        prev_close = data["Close"].iloc[-2]
         last_close = data["Close"].iloc[-1]
         diff = last_close - prev_close
         percent = (diff / prev_close) * 100
@@ -82,16 +82,16 @@ fund_section = "📊 投資信託（前日比 %）\n"
 for name, change in funds.items():
     fund_section += f"- {name}：{change:+.2f}%\n"
 
-# ✅ 株価セクション先に実行（失敗銘柄の収集のため）
+# 株価セクションを先に実行（取得失敗銘柄のため）
 japan_section = format_section("🇯🇵 日本株", japan_stocks)
 us_section = format_section("🇺🇸 米国株", us_stocks)
 
-# ✅ 失敗銘柄セクションをここで作成
+# 失敗銘柄セクション
 fail_section = ""
 if failed_stocks:
     fail_section = "\n⚠️ 取得失敗銘柄：\n" + "\n".join(f"- {name}" for name in failed_stocks)
 
-# ✅ Slack送信用メッセージを組み立てる
+# Slack送信メッセージ
 message = (
     f"📊 株式レポート（{today}）\n\n"
     f"{japan_section}\n"
