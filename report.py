@@ -63,23 +63,13 @@ def format_section(title, stock_list):
         res = fetch_price(stock["ticker"])
         if res:
             price, diff, percent = res
-            section += f"- {stock['name']}（{stock['ticker']}）\n  {price:.2f}（前日比 {diff:+.2f}, {percent:+.2f}%）\n\n"
+            section += (
+                f"- {stock['name']}（{stock['ticker']}）\n"
+                f"  {price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）\n\n"
+            )
         else:
             failed_stocks.append(stock["name"])
     return section
-
-# 投資信託（ダミー）
-funds = {
-    "野村世界半導体株投資": +1.23,
-    "eMAXIS Slim 米国株式": -0.45,
-    "eMAXIS Neo 宇宙開発": +0.30,
-    "SBI・V・S&P500": +0.10,
-    "SBI・ゴールド": -0.55,
-}
-
-fund_section = "📊 投資信託（前日比 %）\n"
-for name, change in funds.items():
-    fund_section += f"- {name}：{change:+.2f}%\n"
 
 # 株価セクションを先に実行（取得失敗銘柄のため）
 japan_section = format_section("🇯🇵 日本株", japan_stocks)
@@ -95,7 +85,6 @@ message = (
     f"📊 株式レポート（{today}）\n\n"
     f"{japan_section}\n"
     f"{us_section}\n"
-    f"{fund_section}"
     f"{fail_section}"
 )
 
