@@ -41,10 +41,10 @@ today = datetime.date.today()
 
 def fetch_price(ticker):
     data = yf.download(ticker, period="2d", interval="1d", progress=False)
-    if len(data) < 2 or "Close" not in data:
-        return None
-    prev_close = data["Close"][-2]
-    last_close = data["Close"][-1]
+    if len(data) < 2:
+        return None  # ← 安全に None を返す
+    prev_close = data["Close"].iloc[-2]
+    last_close = data["Close"].iloc[-1]
     diff = last_close - prev_close
     percent = (diff / prev_close) * 100
     return last_close, diff, percent
