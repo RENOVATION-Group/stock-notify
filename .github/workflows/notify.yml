@@ -2,8 +2,8 @@ name: Notify Slack Twice Daily
 
 on:
   schedule:
-    - cron: '0 21 * * *'  # JST 6:00
-    - cron: '30 6 * * *'  # JST 15:30
+    - cron: '0 21 * * *'    # JST 6:00
+    - cron: '30 6 * * *'    # JST 15:30
   workflow_dispatch:
 
 jobs:
@@ -23,5 +23,6 @@ jobs:
 
       - name: Run stock report
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
         run: python report.py
