@@ -64,7 +64,7 @@ def format_section(title, stock_list):
         if res:
             price, diff, percent = res
             section += (
-                f"- {stock['name']}（{stock['ticker']}）\n"
+                f"- *{stock['name']}*（{stock['ticker']}）\n"
                 f"  {price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）\n\n"
             )
         else:
