@@ -71,7 +71,7 @@ def format_section(title, stock_list):
             failed_stocks.append(stock["name"])
     return section
 
-# 株価セクション（投資信託なし）
+# 株価セクション
 japan_section = format_section("🇯🇵 日本株", japan_stocks)
 us_section = format_section("🇺🇸 米国株", us_stocks)
 
@@ -80,7 +80,7 @@ fail_section = ""
 if failed_stocks:
     fail_section = "\n⚠️ 取得失敗銘柄：\n" + "\n".join(f"- {name}" for name in failed_stocks)
 
-# Slack送信メッセージ
+# Slackに送信するメッセージ
 message = (
     f"📊 株式レポート（{today}）\n\n"
     f"{japan_section}\n"
@@ -88,9 +88,16 @@ message = (
     f"{fail_section}"
 )
 
-# Slack送信（mrkdwn を有効にする）
+# Slack送信（blocks形式でmrkdwnを強制有効化）
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 requests.post(SLACK_WEBHOOK_URL, json={
-    "text": message,
-    "mrkdwn": True
+    "blocks": [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": message
+            }
+        }
+    ]
 })
