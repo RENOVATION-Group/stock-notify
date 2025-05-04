@@ -44,11 +44,14 @@ failed_stocks = []
 
 def fetch_price(ticker):
     data = yf.download(ticker, period="2d", interval="1d", progress=False)
-    if data is None or len(data) < 2 or "Close" not in data.columns:
+
+    # データが不十分、または取得失敗時
+    if data is None or data.empty or "Close" not in data.columns or len(data["Close"]) < 2:
         return None
+
     try:
-        prev_close = data["Close"].iloc[-2]
-        last_close = data["Close"].iloc[-1]
+        prev_close = float(data["Close"].iloc[-2])
+        last_close = float(data["Close"].iloc[-1])
         diff = last_close - prev_close
         percent = (diff / prev_close) * 100
         return last_close, diff, percent
@@ -61,7 +64,10 @@ def format_section(title, stock_list):
         res = fetch_price(stock["ticker"])
         if res:
             price, diff, percent = res
-            section += f"- *{stock['name']}*（{stock['ticker']}）\n  {price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）\n\n"
+            section += (
+                f"- *{stock['name']}*（{stock['ticker']}）\n"
+                f"  {price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）\n\n"
+            )
         else:
             failed_stocks.append(stock["name"])
     return section
@@ -82,15 +88,16 @@ def post_to_slack(text):
     response = requests.post(url, headers=headers, json=payload)
     print("Slack response:", response.status_code, response.text)
 
-# 株価セクションを作成
+# 各セクション作成
 japan_section = format_section("🇯🇵 *日本株*", japan_stocks)
 us_section = format_section("🇺🇸 *米国株*", us_stocks)
 
+# 取得失敗銘柄の表示
 fail_section = ""
 if failed_stocks:
     fail_section = "\n⚠️ *取得失敗銘柄：*\n" + "\n".join(f"- {name}" for name in failed_stocks)
 
-# メッセージ構築
+# メッセージ組み立て
 message = (
     f"📊 *株式レポート（{today}）*\n\n"
     f"{japan_section}\n"
@@ -98,5 +105,5 @@ message = (
     f"{fail_section}"
 )
 
-# Slackへ送信
+# Slackに投稿
 post_to_slack(message)
