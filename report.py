@@ -68,24 +68,33 @@ def format_section(title, stock_list):
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
     return blocks
 
-# Slackメッセージ用ブロック構成
+# Slack Blocks 構築
 blocks = [{"type": "header", "text": {"type": "plain_text", "text": f"📈 株式レポート（{today}）"}}]
 blocks += format_section("🇯🇵 日本株", japan_stocks)
 blocks += [{"type": "divider"}]
 blocks += format_section("🇺🇸 米国株", us_stocks)
 
-# エラー銘柄表示
 if failed_stocks:
     fail_text = "*⚠️ 取得失敗銘柄：*\n" + "\n".join(f"- {name}" for name in failed_stocks)
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": fail_text}})
 
-# Slack通知送信（textフィールド追加済み）
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
-if SLACK_WEBHOOK_URL:
-    response = requests.post(SLACK_WEBHOOK_URL, json={
-        "text": f"📈 株式レポート（{today}）",  # fallback用テキスト
-        "blocks": blocks
-    })
+# Slack Bot Token 通知
+SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")
+
+if SLACK_BOT_TOKEN and SLACK_CHANNEL_ID:
+    response = requests.post(
+        "https://slack.com/api/chat.postMessage",
+        headers={
+            "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "channel": SLACK_CHANNEL_ID,
+            "blocks": blocks,
+            "text": f"📈 株式レポート（{today}）"  # fallback
+        }
+    )
     print("Slack response:", response.status_code, response.text)
 else:
-    print("❌ SLACK_WEBHOOK_URL is not set. Please check GitHub Secrets.")
+    print("❌ SLACK_BOT_TOKEN または SLACK_CHANNEL_ID が未設定です")
