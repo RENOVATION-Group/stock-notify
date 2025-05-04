@@ -40,7 +40,7 @@ japan_stocks = [s for s in stocks if s["ticker"].endswith(".T")]
 us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 
 today = datetime.date.today()
-failed_stocks = []  # ← 取得失敗リスト
+failed_stocks = []
 
 def fetch_price(ticker):
     data = yf.download(ticker, period="2d", interval="1d", progress=False)
@@ -81,7 +81,11 @@ fund_section = "📊 投資信託（前日比 %）\n"
 for name, change in funds.items():
     fund_section += f"- {name}：{change:+.2f}%\n"
 
-# 失敗銘柄セクション
+# 株価セクションを先に実行
+japan_section = format_section("🇯🇵 日本株", japan_stocks)
+us_section = format_section("🇺🇸 米国株", us_stocks)
+
+# 失敗銘柄セクション（取得後に生成）
 fail_section = ""
 if failed_stocks:
     fail_section = "\n⚠️ 取得失敗銘柄：\n" + "\n".join(f"- {name}" for name in failed_stocks)
@@ -89,11 +93,12 @@ if failed_stocks:
 # Slack送信メッセージ
 message = (
     f"📊 株式レポート（{today}）\n\n"
-    f"🇯🇵 日本株\n{format_section('', japan_stocks)}\n"
-    f"🇺🇸 米国株\n{format_section('', us_stocks)}\n"
+    f"{japan_section}\n"
+    f"{us_section}\n"
     f"{fund_section}"
     f"{fail_section}"
 )
 
+# Slack送信
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 requests.post(SLACK_WEBHOOK_URL, json={"text": message})
