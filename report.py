@@ -40,15 +40,14 @@ japan_stocks = [s for s in stocks if s["ticker"].endswith(".T")]
 us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 
 today = datetime.date.today()
-failed_stocks = []
 
 def fetch_price(ticker):
+    data = yf.download(ticker, period="2d", interval="1d", progress=False)
+    if data is None or len(data) < 2 or "Close" not in data.columns:
+        return None
     try:
-        data = yf.download(ticker, period="2d", interval="1d", progress=False, auto_adjust=False)
-        if data is None or data.empty or "Close" not in data.columns or len(data["Close"]) < 2:
-            return None
-        prev_close = data["Close"].iloc[-2].item()
-        last_close = data["Close"].iloc[-1].item()
+        prev_close = float(data["Close"].iloc[-2])
+        last_close = float(data["Close"].iloc[-1])
         diff = last_close - prev_close
         percent = (diff / prev_close) * 100
         return last_close, diff, percent
@@ -56,45 +55,32 @@ def fetch_price(ticker):
         return None
 
 def format_section(title, stock_list):
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*{title}*"}}]
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"*{title}*"}},
+        {"type": "divider"},
+    ]
     for stock in stock_list:
         result = fetch_price(stock["ticker"])
         if result:
             price, diff, percent = result
-            text = f"*{stock['name']}*（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
+            text = f"- *{stock['name']}*（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
         else:
-            text = f"*{stock['name']}*（{stock['ticker']}）\n取得失敗"
-            failed_stocks.append(stock["name"])
+            text = f"- *{stock['name']}*（{stock['ticker']}）\n⚠️ 取得失敗"
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
     return blocks
 
-# Slack Blocks 構築
-blocks = [{"type": "header", "text": {"type": "plain_text", "text": f"📈 株式レポート（{today}）"}}]
+# Slack通知用のブロック構築
+blocks = [
+    {"type": "header", "text": {"type": "plain_text", "text": f"株式レポート（{today}）"}}
+]
+
 blocks += format_section("🇯🇵 日本株", japan_stocks)
-blocks += [{"type": "divider"}]
 blocks += format_section("🇺🇸 米国株", us_stocks)
 
-if failed_stocks:
-    fail_text = "*⚠️ 取得失敗銘柄：*\n" + "\n".join(f"- {name}" for name in failed_stocks)
-    blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": fail_text}})
-
-# Slack Bot Token 通知
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
-SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")
-
-if SLACK_BOT_TOKEN and SLACK_CHANNEL_ID:
-    response = requests.post(
-        "https://slack.com/api/chat.postMessage",
-        headers={
-            "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "channel": SLACK_CHANNEL_ID,
-            "blocks": blocks,
-            "text": f"📈 株式レポート（{today}）"  # fallback
-        }
-    )
-    print("Slack response:", response.status_code, response.text)
+# Slack送信
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+if not SLACK_WEBHOOK_URL:
+    print("❌ SLACK_WEBHOOK_URL is not set. Please check GitHub Secrets.")
 else:
-    print("❌ SLACK_BOT_TOKEN または SLACK_CHANNEL_ID が未設定です")
+    response = requests.post(SLACK_WEBHOOK_URL, json={"blocks": blocks})
+    print(f"✅ Slack response status: {response.status_code}")
