@@ -24,4 +24,4 @@ jobs:
       - name: Run stock report
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: python stock_report.py
+        run: python report.py
