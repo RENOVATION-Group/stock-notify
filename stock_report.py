@@ -40,16 +40,22 @@ japan_stocks = [s for s in stocks if s["ticker"].endswith(".T")]
 us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 
 today = datetime.date.today()
+failed_stocks = []  # ← 取得失敗リスト
 
 def fetch_price(ticker):
     data = yf.download(ticker, period="2d", interval="1d", progress=False)
-    if len(data) < 2:
+
+    if data is None or len(data) < 2 or "Close" not in data.columns:
         return None
-    prev_close = data["Close"].iloc[-2]
-    last_close = data["Close"].iloc[-1]
-    diff = last_close - prev_close
-    percent = (diff / prev_close) * 100
-    return last_close, diff, percent
+
+    try:
+        prev_close = data["Close"].iloc[-2]
+        last_close = data["Close"].iloc[-1]
+        diff = last_close - prev_close
+        percent = (diff / prev_close) * 100
+        return last_close, diff, percent
+    except Exception:
+        return None
 
 def format_section(title, stock_list):
     section = f"{title}\n"
@@ -58,6 +64,8 @@ def format_section(title, stock_list):
         if res:
             price, diff, percent = res
             section += f"- {stock['name']}（{stock['ticker']}）\n  {price:.2f}（前日比 {diff:+.2f}, {percent:+.2f}%）\n\n"
+        else:
+            failed_stocks.append(stock["name"])
     return section
 
 # 投資信託（ダミー）
@@ -73,8 +81,19 @@ fund_section = "📊 投資信託（前日比 %）\n"
 for name, change in funds.items():
     fund_section += f"- {name}：{change:+.2f}%\n"
 
-# Slack送信
-message = f"📊 株式レポート（{today}）\n\n🇯🇵 日本株\n{format_section('', japan_stocks)}\n🇺🇸 米国株\n{format_section('', us_stocks)}\n{fund_section}"
+# 失敗銘柄セクション
+fail_section = ""
+if failed_stocks:
+    fail_section = "\n⚠️ 取得失敗銘柄：\n" + "\n".join(f"- {name}" for name in failed_stocks)
+
+# Slack送信メッセージ
+message = (
+    f"📊 株式レポート（{today}）\n\n"
+    f"🇯🇵 日本株\n{format_section('', japan_stocks)}\n"
+    f"🇺🇸 米国株\n{format_section('', us_stocks)}\n"
+    f"{fund_section}"
+    f"{fail_section}"
+)
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 requests.post(SLACK_WEBHOOK_URL, json={"text": message})
