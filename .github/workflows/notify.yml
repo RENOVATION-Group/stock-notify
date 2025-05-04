@@ -1,0 +1,27 @@
+name: Notify Slack Twice Daily
+
+on:
+  schedule:
+    - cron: '0 21 * * *'  # JST 6:00
+    - cron: '30 6 * * *'  # JST 15:30
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run stock report
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python stock_report.py
