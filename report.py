@@ -66,7 +66,7 @@ def format_section(title, stock_list):
         res = fetch_price(stock["ticker"])
         if res:
             price, diff, percent = res
-            text = f"*{stock['name']}*（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
+            text = f"{stock['name']}（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
             blocks.append({
                 "type": "section",
                 "text": {"type": "mrkdwn", "text": text}
