@@ -36,14 +36,12 @@ stocks = [
     {"ticker": "KO", "name": "Coca-Cola"},
 ]
 
-# 銘柄の分類
 japan_stocks = [s for s in stocks if s["ticker"].endswith(".T")]
 us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 
 today = datetime.date.today()
 failed_stocks = []
 
-# 株価取得関数（Series→float 修正済み）
 def fetch_price(ticker):
     try:
         data = yf.download(ticker, period="2d", interval="1d", progress=False, auto_adjust=False)
@@ -57,7 +55,6 @@ def fetch_price(ticker):
     except Exception:
         return None
 
-# SlackのBlock Kit用に整形
 def format_section(title, stock_list):
     blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*{title}*"}}]
     for stock in stock_list:
@@ -71,19 +68,24 @@ def format_section(title, stock_list):
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
     return blocks
 
-# Slack用blocksをまとめる
+# Slackメッセージ用ブロック構成
 blocks = [{"type": "header", "text": {"type": "plain_text", "text": f"📈 株式レポート（{today}）"}}]
 blocks += format_section("🇯🇵 日本株", japan_stocks)
 blocks += [{"type": "divider"}]
 blocks += format_section("🇺🇸 米国株", us_stocks)
 
+# エラー銘柄表示
 if failed_stocks:
     fail_text = "*⚠️ 取得失敗銘柄：*\n" + "\n".join(f"- {name}" for name in failed_stocks)
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": fail_text}})
 
-# Slackに送信（Webhook URL版）
+# Slack通知送信（textフィールド追加済み）
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 if SLACK_WEBHOOK_URL:
-    requests.post(SLACK_WEBHOOK_URL, json={"blocks": blocks})
+    response = requests.post(SLACK_WEBHOOK_URL, json={
+        "text": f"📈 株式レポート（{today}）",  # fallback用テキスト
+        "blocks": blocks
+    })
+    print("Slack response:", response.status_code, response.text)
 else:
     print("❌ SLACK_WEBHOOK_URL is not set. Please check GitHub Secrets.")
