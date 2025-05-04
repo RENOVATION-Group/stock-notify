@@ -2,8 +2,8 @@ name: Notify Slack Twice Daily
 
 on:
   schedule:
-    - cron: '0 21 * * *'    # JST 6:00
-    - cron: '30 6 * * *'    # JST 15:30
+    - cron: '0 22 * * *'    # JST 7:00
+    - cron: '0 7 * * *'    # JST 16:00
   workflow_dispatch:
 
 jobs:
