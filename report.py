@@ -36,54 +36,54 @@ stocks = [
     {"ticker": "KO", "name": "Coca-Cola"},
 ]
 
-# 日本株・米国株に分ける
+# 銘柄の分類
 japan_stocks = [s for s in stocks if s["ticker"].endswith(".T")]
 us_stocks = [s for s in stocks if not s["ticker"].endswith(".T")]
 
 today = datetime.date.today()
 failed_stocks = []
 
-# 株価取得関数（float 変換付き）
+# 株価取得関数（Series→float 修正済み）
 def fetch_price(ticker):
     try:
         data = yf.download(ticker, period="2d", interval="1d", progress=False, auto_adjust=False)
-        if data is None or len(data) < 2 or "Close" not in data.columns:
+        if data is None or data.empty or "Close" not in data.columns or len(data["Close"]) < 2:
             return None
-        prev_close = float(data["Close"].iloc[-2])
-        last_close = float(data["Close"].iloc[-1])
+        prev_close = data["Close"].iloc[-2].item()
+        last_close = data["Close"].iloc[-1].item()
         diff = last_close - prev_close
         percent = (diff / prev_close) * 100
         return last_close, diff, percent
     except Exception:
         return None
 
-# Slack Block Kit形式で出力を構築
+# SlackのBlock Kit用に整形
 def format_section(title, stock_list):
-    blocks = [
-        {"type": "section", "text": {"type": "mrkdwn", "text": f"*{title}*"}}
-    ]
+    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*{title}*"}}]
     for stock in stock_list:
-        res = fetch_price(stock["ticker"])
-        if res:
-            price, diff, percent = res
-            text = f"- *{stock['name']}*（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
-            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
+        result = fetch_price(stock["ticker"])
+        if result:
+            price, diff, percent = result
+            text = f"*{stock['name']}*（{stock['ticker']}）\n{price:,.2f}（前日比 {diff:+,.2f}, {percent:+.2f}%）"
         else:
+            text = f"*{stock['name']}*（{stock['ticker']}）\n取得失敗"
             failed_stocks.append(stock["name"])
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
     return blocks
 
-# Slack投稿メッセージの構築
-blocks = [
-    {"type": "header", "text": {"type": "plain_text", "text": f"📈 株式レポート（{today}）"}}
-]
+# Slack用blocksをまとめる
+blocks = [{"type": "header", "text": {"type": "plain_text", "text": f"📈 株式レポート（{today}）"}}]
 blocks += format_section("🇯🇵 日本株", japan_stocks)
+blocks += [{"type": "divider"}]
 blocks += format_section("🇺🇸 米国株", us_stocks)
 
-# エラーがある場合
 if failed_stocks:
-    fail_text = "⚠️ 取得失敗銘柄：\n" + "\n".join(f"- {name}" for name in failed_stocks)
+    fail_text = "*⚠️ 取得失敗銘柄：*\n" + "\n".join(f"- {name}" for name in failed_stocks)
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": fail_text}})
 
-# Slack送信
+# Slackに送信（Webhook URL版）
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
-requests.post(SLACK_WEBHOOK_URL, json={"blocks": blocks})
+if SLACK_WEBHOOK_URL:
+    requests.post(SLACK_WEBHOOK_URL, json={"blocks": blocks})
+else:
+    print("❌ SLACK_WEBHOOK_URL is not set. Please check GitHub Secrets.")
