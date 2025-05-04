@@ -49,9 +49,8 @@ def fetch_price(ticker):
         return None
 
     try:
-        # 修正済み：KeyError: -2 を防ぐために iloc を使用
-        prev_close = data["Close"].iloc[-2]
-        last_close = data["Close"].iloc[-1]
+        prev_close = float(data["Close"].iloc[-2])
+        last_close = float(data["Close"].iloc[-1])
         diff = last_close - prev_close
         percent = (diff / prev_close) * 100
         return last_close, diff, percent
